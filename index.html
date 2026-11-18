@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>2-Storey Isometric CGI Stack</title>
 <style>
   :root { --bg:#111317; --panel:#1c1f26; --accent:#3b82f6; --text:#f3f4f6; --muted:#9ca3af; --spacing:0px; --shadow:0; }
@@ -14,34 +14,33 @@
   button { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer; }
   button:hover { background:#323746; }
   button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .slider-wrap { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .slider-wrap { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-left:4px; }
   .slider-val { min-width:36px; color:var(--text); font-variant-numeric:tabular-nums; }
-  input[type="range"] { accent-color:var(--accent); cursor:pointer; width:120px; }
-  main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px; overflow:hidden; }
-  .stack { position:relative; width:min(94vw, 72dvh, 720px); height:min(94vw, 72dvh, 720px); }
-  .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; pointer-events:none; }
-  .layer img { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 14px 24px rgba(0,0,0,var(--shadow))); }
+  input[type="range"] { accent-color:var(--accent); cursor:pointer; width:110px; }
+  .zoom-wrap { display:flex; align-items:center; gap:4px; margin-left:4px; }
+  .zoom-wrap button { padding:6px 9px; font-weight:600; }
+  main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; touch-action:none; cursor:grab; }
+  main:active { cursor:grabbing; }
+  .viewport { display:flex; align-items:center; justify-content:center; transform-origin:center center; will-change:transform; }
+  .stack { position:relative; width:min(94vw, 72dvh, 720px); height:min(94vw, 72dvh, 720px); pointer-events:none; }
+  .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
+  .layer img { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 14px 24px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
   .f1 { z-index:1; transform:translateY(calc(var(--spacing) * 0.5)); }
   .f2 { z-index:2; transform:translateY(calc(var(--spacing) * -0.5)); }
   .stack.iso-1 .layer:not(.f1), .stack.iso-2 .layer:not(.f2) { opacity:0.12; filter:grayscale(100%); }
-  .loader { position:fixed; bottom:10px; right:12px; background:rgba(28,31,38,0.9); border:1px solid #2d313c; padding:6px 10px; border-radius:8px; display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); z-index:20; }
-  .loader label { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:4px 8px; border-radius:5px; cursor:pointer; }
-  .loader input { display:none; }
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     header { padding:8px 12px; gap:8px; }
     h1 { width:100%; font-size:13px; }
     .controls { width:100%; justify-content:space-between; }
-    .slider-wrap { width:100%; margin-top:2px; }
-    input[type="range"] { flex:1; }
+    .slider-wrap { flex:1; min-width:160px; }
+    input[type="range"] { flex:1; width:auto; }
     .stack { width:min(96vw, 68dvh); height:min(96vw, 68dvh); }
   }
   @media (orientation: landscape) and (max-height: 500px) {
     header { padding:6px 12px; flex-wrap:nowrap; }
     h1 { display:none; }
     .controls { width:100%; justify-content:space-between; }
-    main { padding:6px; }
     .stack { width:min(90vw, 80dvh); height:min(90vw, 80dvh); }
-    .loader { display:none; }
   }
 </style>
 </head>
@@ -57,21 +56,24 @@
         <input type="range" id="rng" min="0" max="250" value="0">
         <span class="slider-val" id="val">0px</span>
       </div>
+      <div class="zoom-wrap">
+        <button id="zOut" title="Zoom Out">−</button>
+        <button id="zReset" title="Reset View">100%</button>
+        <button id="zIn" title="Zoom In">+</button>
+      </div>
     </div>
   </header>
-  <main>
-    <div class="stack" id="stk">
-      <div class="layer f1"><img id="i1" src="GF.png" alt="Ground Floor"></div>
-      <div class="layer f2"><img id="i2" src="FF.png" alt="First Floor"></div>
+  <main id="stage">
+    <div class="viewport" id="vp">
+      <div class="stack" id="stk">
+        <div class="layer f1"><img src="GF.png" alt="Ground Floor"></div>
+        <div class="layer f2"><img src="FF.png" alt="First Floor"></div>
+      </div>
     </div>
   </main>
-  <div class="loader">
-    <span>Load:</span>
-    <label>Ground <input type="file" id="u1" accept="image/*"></label>
-    <label>First <input type="file" id="u2" accept="image/*"></label>
-  </div>
   <script>
     const stk = document.getElementById("stk"), rng = document.getElementById("rng"), val = document.getElementById("val");
+    const stage = document.getElementById("stage"), vp = document.getElementById("vp");
     const btns = [bAll, b1, b2];
     const setIso = (cls, b) => {
       btns.forEach(x => x.classList.remove("active"));
@@ -87,9 +89,64 @@
       document.documentElement.style.setProperty("--spacing", n + "px");
       document.documentElement.style.setProperty("--shadow", (Math.min(n / 60, 1) * 0.45).toFixed(2));
     };
-    [[u1, i1], [u2, i2]].forEach(([inp, img]) => {
-      inp.onchange = () => { if (inp.files.length) img.src = URL.createObjectURL(inp.files.item(0)); };
-    });
+
+    let scale = 1, tx = 0, ty = 0;
+    const pts = new Map();
+    let lastDist = 0, lastMid = null;
+    const applyTransform = () => {
+      vp.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      zReset.textContent = Math.round(scale * 100) + "%";
+    };
+    const setZoom = (next, cx = 0, cy = 0) => {
+      const prev = scale;
+      scale = Math.min(Math.max(next, 0.75), 4);
+      const ratio = scale / prev;
+      tx = cx - (cx - tx) * ratio;
+      ty = cy - (cy - ty) * ratio;
+      if (scale === 1 && Math.abs(tx) < 5 && Math.abs(ty) < 5) { tx = 0; ty = 0; }
+      applyTransform();
+    };
+    zIn.onclick = () => setZoom(scale + 0.35);
+    zOut.onclick = () => setZoom(scale - 0.35);
+    zReset.onclick = () => { scale = 1; tx = 0; ty = 0; applyTransform(); };
+    stage.ondblclick = () => { scale = 1; tx = 0; ty = 0; applyTransform(); };
+    stage.addEventListener("wheel", e => {
+      e.preventDefault();
+      const rect = stage.getBoundingClientRect();
+      const cx = e.clientX - (rect.left + rect.width / 2);
+      const cy = e.clientY - (rect.top + rect.height / 2);
+      setZoom(scale * (e.deltaY < 0 ? 1.12 : 0.89), cx, cy);
+    }, { passive: false });
+
+    stage.onpointerdown = e => {
+      stage.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      lastDist = 0; lastMid = null;
+    };
+    stage.onpointermove = e => {
+      if (!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) {
+        tx += e.clientX - prev.x;
+        ty += e.clientY - prev.y;
+        applyTransform();
+      } else if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        const rect = stage.getBoundingClientRect();
+        const mid = { x: (a.x + b.x) / 2 - (rect.left + rect.width / 2), y: (a.y + b.y) / 2 - (rect.top + rect.height / 2) };
+        if (lastDist > 0 && lastMid) {
+          tx += mid.x - lastMid.x;
+          ty += mid.y - lastMid.y;
+          setZoom(scale * (dist / lastDist), mid.x, mid.y);
+        }
+        lastDist = dist; lastMid = mid;
+      }
+    };
+    const endPtr = e => { pts.delete(e.pointerId); lastDist = 0; lastMid = null; };
+    stage.onpointerup = endPtr;
+    stage.onpointercancel = endPtr;
   </script>
 </body>
 </html>
