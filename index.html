@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>2-Storey Isometric CGI Stack</title>
+<style>
+  :root { --bg:#111317; --panel:#1c1f26; --accent:#3b82f6; --text:#f3f4f6; --muted:#9ca3af; --spacing:0px; --shadow:0; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  header { background:var(--panel); border-bottom:1px solid #2d313c; padding:12px 20px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; z-index:10; }
+  h1 { font-size:15px; }
+  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  button { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:6px 12px; border-radius:6px; font-size:13px; cursor:pointer; }
+  button:hover { background:#323746; }
+  button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .slider-wrap { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); margin-left:8px; }
+  .slider-val { min-width:40px; color:var(--text); font-variant-numeric:tabular-nums; }
+  input[type="range"] { accent-color:var(--accent); cursor:pointer; width:140px; }
+  main { flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .stack { position:relative; width:min(85vw,640px); aspect-ratio:1/1; }
+  .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; pointer-events:none; }
+  .layer img { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 14px 24px rgba(0,0,0,var(--shadow))); }
+  .f1 { z-index:1; transform:translateY(calc(var(--spacing) * 0.5)); }
+  .f2 { z-index:2; transform:translateY(calc(var(--spacing) * -0.5)); }
+  .stack.iso-1 .layer:not(.f1), .stack.iso-2 .layer:not(.f2) { opacity:0.12; filter:grayscale(100%); }
+  .loader { position:fixed; bottom:16px; right:20px; background:var(--panel); border:1px solid #2d313c; padding:8px 12px; border-radius:8px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); z-index:20; }
+  .loader label { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:4px 9px; border-radius:5px; cursor:pointer; }
+  .loader input { display:none; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>2-Storey Isometric CGI Stack</h1>
+    <div class="controls">
+      <button id="bAll" class="active">All Floors</button>
+      <button id="b1">Ground Floor</button>
+      <button id="b2">First Floor</button>
+      <div class="slider-wrap">
+        <span>Spacing:</span>
+        <input type="range" id="rng" min="0" max="250" value="0">
+        <span class="slider-val" id="val">0px</span>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="stack" id="stk">
+      <div class="layer f1"><img id="i1" src="GF.png" alt="Ground Floor"></div>
+      <div class="layer f2"><img id="i2" src="FF.png" alt="First Floor"></div>
+    </div>
+  </main>
+  <div class="loader">
+    <span>Load Renders:</span>
+    <label>Ground <input type="file" id="u1" accept="image/*"></label>
+    <label>First <input type="file" id="u2" accept="image/*"></label>
+  </div>
+  <script>
+    const stk = document.getElementById("stk"), rng = document.getElementById("rng"), val = document.getElementById("val");
+    const btns = [bAll, b1, b2];
+    const setIso = (cls, b) => {
+      btns.forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      stk.className = "stack" + (cls ? " " + cls : "");
+    };
+    bAll.onclick = () => setIso("", bAll);
+    b1.onclick = () => setIso("iso-1", b1);
+    b2.onclick = () => setIso("iso-2", b2);
+    rng.oninput = () => {
+      const n = +rng.value;
+      val.textContent = n + "px";
+      document.documentElement.style.setProperty("--spacing", n + "px");
+      document.documentElement.style.setProperty("--shadow", (Math.min(n / 60, 1) * 0.45).toFixed(2));
+    };
+    [[u1, i1], [u2, i2]].forEach(([inp, img]) => {
+      inp.onchange = () => { if (inp.files.length) img.src = URL.createObjectURL(inp.files.item(0)); };
+    });
+  </script>
+</body>
+</html>
