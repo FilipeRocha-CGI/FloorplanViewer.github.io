@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -25,7 +25,7 @@
   .stack { position:relative; width:2048px; height:2048px; pointer-events:none; }
   .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
   .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
-  .layer.dimmed { opacity:0; filter:grayscale(100%); }
+  .layer.dimmed { opacity:0.12; filter:grayscale(100%); }
   @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
   @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
 </style>
@@ -33,12 +33,13 @@
 <body>
   <header>
     <!-- STEP 1: Edit building title -->
+    <h1>Isometric CGI Stack</h1>
     <div class="controls">
       <!-- STEP 2: Floor filter buttons (data-floor="0, 1, 2..." must match layer order in STEP 3) -->
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
       <button class="floor-btn" data-floor="1">First Floor</button>
-      <!--<button class="floor-btn" data-floor="2">Roof</button>-->
+      <button class="floor-btn" data-floor="2">Roof</button>
       <div class="slider-wrap">
         <span>Spacing:</span>
         <input type="range" id="rng" min="0" max="650" value="0">
@@ -50,7 +51,7 @@
         <span class="slider-val" id="rotVal">0°</span>
       </div>
       <div class="zoom-wrap">
-        <button id="zOut" title="Zoom Out">−</button>
+        <button id="zOut" title="Zoom Out">-</button>
         <button id="zReset" title="Reset View">100%</button>
         <button id="zIn" title="Zoom In">+</button>
       </div>
@@ -58,11 +59,13 @@
   </header>
   <main id="stage">
     <div class="viewport" id="vp">
-      <!-- STEP 3: Layers from BOTTOM to TOP (1st stays fixed; .png = static 2K, .gif = auto-enables Rotate slider) -->
+      <!-- STEP 3: Layers from BOTTOM to TOP
+           - Put your filename in data-src="..." (NOT src="...") so animated GIFs load paused at frame 0.
+           - Works with both .png/.webp (static 2K) and .gif (auto-enables Rotate slider). -->
       <div class="stack" id="stk">
-        <div class="layer"><img src="GF.png" alt="Ground Floor"></div>
-        <div class="layer"><img src="FF.png" alt="First Floor"></div>
-        <div class="layer"><img src="Roof.png" alt="Roof"></div>
+        <div class="layer"><img data-src="GF.gif" alt="Ground Floor"></div>
+        <div class="layer"><img data-src="FF.gif" alt="First Floor"></div>
+        <div class="layer"><img data-src="Roof.gif" alt="Roof"></div>
       </div>
     </div>
   </main>
@@ -93,38 +96,50 @@
     };
 
     layers.forEach(async l => {
-      const img = l.querySelector("img"), src = img?.getAttribute("src");
-      if (!src || !src.toLowerCase().endsWith(".gif") || !("ImageDecoder" in window)) return;
+      const img = l.querySelector("img"), src = img?.dataset.src || img?.getAttribute("src");
+      if (!src) return;
+      if (!src.toLowerCase().endsWith(".gif") || !("ImageDecoder" in window)) { img.src = src; return; }
       try {
         const res = await fetch(src);
-        const dec = new ImageDecoder({ data: res.body, type: "image/gif" });
-        await dec.tracks.ready;
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const buf = await res.arrayBuffer();
+        const dec = new ImageDecoder({ data: buf, type: "image/gif" });
+        await dec.completed;
         const count = dec.tracks.selectedTrack.frameCount;
-        if (count <= 1) return;
-        const frames = [];
-        for (let i = 0; i < count; i++) {
-          const { image } = await dec.decode({ frameIndex: i });
-          frames.push(await createImageBitmap(image));
-          image.close();
-        }
-        const c = document.createElement("canvas");
-        c.width = frames[0].width; c.height = frames[0].height;
-        const ctx = c.getContext("2d");
-        ctx.drawImage(frames[0], 0, 0);
+        if (count <= 1) { img.src = src; return; }
+        const c = document.createElement("canvas"), ctx = c.getContext("2d");
+        const first = await dec.decode({ frameIndex: 0 });
+        c.width = first.image.displayWidth; c.height = first.image.displayHeight;
+        ctx.drawImage(first.image, 0, 0);
+        first.image.close();
         img.replaceWith(c);
-        gifCtrls.push({ ctx, c, frames, count });
+        const ctrl = { dec, ctx, c, count, busy: false, next: -1 };
+        gifCtrls.push(ctrl);
         rotWrap.style.display = "flex";
         rotRng.max = count - 1;
-      } catch (e) {}
+      } catch (e) {
+        console.warn("GIF decode error:", src, e);
+        img.src = src;
+      }
     });
+
+    const renderFrame = async (g, idx) => {
+      if (g.busy) { g.next = idx; return; }
+      g.busy = true;
+      try {
+        const { image } = await g.dec.decode({ frameIndex: idx % g.count });
+        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
+        g.ctx.drawImage(image, 0, 0);
+        image.close();
+      } catch (e) {}
+      g.busy = false;
+      if (g.next !== -1) { const n = g.next; g.next = -1; renderFrame(g, n); }
+    };
 
     rotRng.oninput = () => {
       const idx = +rotRng.value, max = +rotRng.max || 1;
       rotVal.textContent = Math.round((idx / max) * 360) + "°";
-      gifCtrls.forEach(g => {
-        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
-        g.ctx.drawImage(g.frames[idx % g.count], 0, 0);
-      });
+      gifCtrls.forEach(g => renderFrame(g, idx));
     };
 
     const getFit = () => Math.min(stage.clientWidth, stage.clientHeight) * 0.92 / 2048;
