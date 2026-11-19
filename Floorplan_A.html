@@ -93,7 +93,7 @@
       document.documentElement.style.setProperty("--shadow", (Math.min(n / 150, 1) * 0.45).toFixed(2));
     };
 
-    layers.forEach(async l => {
+        layers.forEach(async l => {
       const img = l.querySelector("img"), src = img?.dataset.src;
       if (!src) return;
       if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
@@ -102,13 +102,13 @@
         showStatus("Loading frames...");
         const res = await fetch(src + "?v=" + Date.now());
         if (!res.ok) throw new Error(src + " (" + res.status + ")");
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        const dec = new ImageDecoder({ data: bytes, type: "image/gif" });
-        await dec.tracks.ready;
+        const buf = await res.arrayBuffer();
+        const dec = new ImageDecoder({ data: buf, type: "image/gif" });
+        await dec.completed;
         const bitmaps = [];
         for (let i = 0; ; i++) {
           try {
-            const { image } = await dec.decode({ frameIndex: i });
+            const { image } = await dec.decode({ frameIndex: i, completeFramesOnly: true });
             bitmaps.push(await createImageBitmap(image));
             image.close();
           } catch (err) {
@@ -118,14 +118,14 @@
         }
         const count = bitmaps.length;
         const c = document.createElement("canvas"), ctx = c.getContext("2d");
-        c.width = bitmaps[0].width; c.height = bitmaps[0].height;
-        ctx.drawImage(bitmaps[0], 0, 0);
+        c.width = bitmaps.width; c.height = bitmaps.height;
+        ctx.drawImage(bitmaps, 0, 0);
         img.replaceWith(c);
         gifCtrls.push({ ctx, c, bitmaps, count });
         if (count > 1) {
           rotWrap.style.display = "flex";
           const curMax = +rotRng.max || 0;
-          if (count - 1 > curMax) {
+          if (count - 1 >= curMax) {
             rotRng.max = count - 1;
             rotVal.textContent = "1 / " + count;
           }
@@ -135,6 +135,7 @@
         showStatus("Error on " + src + ": " + e.message);
       }
     });
+
 
     rotRng.oninput = () => {
       const idx = +rotRng.value, count = (+rotRng.max || 0) + 1;
