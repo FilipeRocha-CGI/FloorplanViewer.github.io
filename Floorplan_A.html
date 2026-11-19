@@ -26,13 +26,13 @@
   .layer { position:absolute; inset:0; transition:opacity 0.25s ease; }
   .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
   .layer.dimmed { opacity:0; }
-  .status { position:fixed; bottom:10px; left:12px; background:rgba(28,31,38,0.9); border:1px solid #383e4d; color:var(--muted); font-size:11px; padding:4px 10px; border-radius:6px; z-index:30; }
   @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
   @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
 </style>
 </head>
 <body>
   <header>
+    <h1>Isometric CGI Stack</h1>
     <div class="controls">
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
@@ -62,16 +62,13 @@
         <div class="layer"><img data-src="Roof.gif" alt="Roof"></div>
       </div>
     </div>
-    <div class="status" id="status" style="display:none;"></div>
   </main>
   <script>
     const rng = document.getElementById("rng"), val = document.getElementById("val");
     const rotWrap = document.getElementById("rotWrap"), rotRng = document.getElementById("rotRng"), rotVal = document.getElementById("rotVal");
-    const stage = document.getElementById("stage"), vp = document.getElementById("vp"), statusBox = document.getElementById("status");
+    const stage = document.getElementById("stage"), vp = document.getElementById("vp");
     const layers = [...document.querySelectorAll(".layer")], floorBtns = [...document.querySelectorAll(".floor-btn")];
     const gifCtrls = [];
-
-    const showStatus = msg => { statusBox.style.display = "block"; statusBox.textContent = msg; };
 
     layers.forEach((l, i) => {
       l.style.zIndex = i + 1;
@@ -96,43 +93,30 @@
       const img = l.querySelector("img"), src = img?.dataset.src;
       if (!src) return;
       if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
-      if (!("ImageDecoder" in window)) { showStatus("Use Chrome/Edge for GIF scrubbing"); return; }
-      try {
-        showStatus("Loading frames...");
-        const res = await fetch(src + "?v=" + Date.now());
-        if (!res.ok) throw new Error(src + " (" + res.status + ")");
-        const buf = await res.arrayBuffer();
-        const dec = new ImageDecoder({ data: buf, type: "image/gif" });
-        await dec.completed;
-        const bitmaps = [];
-        for (let i = 0; ; i++) {
-          try {
-            const { image } = await dec.decode({ frameIndex: i, completeFramesOnly: true });
-            bitmaps.push(await createImageBitmap(image));
-            image.close();
-          } catch (err) {
-            if (bitmaps.length > 0) break;
-            throw err;
-          }
+      const res = await fetch(src);
+      const dec = new ImageDecoder({ data: await res.arrayBuffer(), type: "image/gif" });
+      await dec.completed;
+      const bitmaps = [];
+      for (let i = 0; ; i++) {
+        try {
+          const { image } = await dec.decode({ frameIndex: i, completeFramesOnly: true });
+          bitmaps.push(await createImageBitmap(image));
+          image.close();
+        } catch { break; }
+      }
+      const count = bitmaps.length, first = bitmaps.at(0);
+      if (!first) return;
+      const c = document.createElement("canvas"), ctx = c.getContext("2d");
+      c.width = first.width; c.height = first.height;
+      ctx.drawImage(first, 0, 0);
+      img.replaceWith(c);
+      gifCtrls.push({ ctx, c, bitmaps, count });
+      if (count > 1) {
+        rotWrap.style.display = "flex";
+        if (count - 1 >= (+rotRng.max || 0)) {
+          rotRng.max = count - 1;
+          rotVal.textContent = "1 / " + count;
         }
-        const count = bitmaps.length;
-        const firstBmp = bitmaps.at(0);
-        const c = document.createElement("canvas"), ctx = c.getContext("2d");
-        c.width = firstBmp.width; c.height = firstBmp.height;
-        ctx.drawImage(firstBmp, 0, 0);
-        img.replaceWith(c);
-        gifCtrls.push({ ctx, c, bitmaps, count });
-        if (count > 1) {
-          rotWrap.style.display = "flex";
-          const curMax = +rotRng.max || 0;
-          if (count - 1 >= curMax) {
-            rotRng.max = count - 1;
-            rotVal.textContent = "1 / " + count;
-          }
-        }
-        statusBox.style.display = "none";
-      } catch (e) {
-        showStatus("Error on " + src + ": " + e.message);
       }
     });
 
