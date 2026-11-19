@@ -25,7 +25,7 @@
   .stack { position:relative; width:2048px; height:2048px; pointer-events:none; }
   .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
   .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
-  .layer.dimmed { opacity:0.12; filter:grayscale(100%); }
+  .layer.dimmed { opacity:0; filter:grayscale(100%); }
   .status { position:fixed; bottom:10px; left:12px; background:rgba(28,31,38,0.9); border:1px solid #383e4d; color:var(--muted); font-size:11px; padding:4px 10px; border-radius:6px; z-index:30; }
   @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
   @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
@@ -48,7 +48,7 @@
       </div>
       <div class="slider-wrap" id="rotWrap" style="display:none;">
         <span>Rotate:</span>
-        <input type="range" id="rotRng" min="0" max="5" value="0" step="1">
+        <input type="range" id="rotRng" min="0" max="6" value="0" step="1">
         <span class="slider-val" id="rotVal">1 / 6</span>
       </div>
       <div class="zoom-wrap">
@@ -64,9 +64,9 @@
         <!-- IMPORTANT: Always use data-src="..." (never src="...") so GIFs never auto-play -->
         <div class="layer"><img data-src="GF.gif" alt="Ground Floor"></div>
         <div class="layer"><img data-src="FF.gif" alt="First Floor"></div>
-        <!-- Uncomment below if you have Roof.gif in the same folder:
+        <!-- Uncomment below if you have Roof.gif in the same folder:-->
         <div class="layer"><img data-src="Roof.gif" alt="Roof"></div>
-        -->
+        
       </div>
     </div>
     <div class="status" id="status" style="display:none;"></div>
