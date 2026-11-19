@@ -26,16 +26,15 @@
   .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
   .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
   .layer.dimmed { opacity:0.12; filter:grayscale(100%); }
+  .status { position:fixed; bottom:10px; left:12px; background:rgba(28,31,38,0.9); border:1px solid #383e4d; color:var(--muted); font-size:11px; padding:4px 10px; border-radius:6px; z-index:30; }
   @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
   @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
 </style>
 </head>
 <body>
   <header>
-    <!-- STEP 1: Edit building title -->
     <h1>Isometric CGI Stack</h1>
     <div class="controls">
-      <!-- STEP 2: Floor filter buttons (data-floor="0, 1, 2..." must match layer order in STEP 3) -->
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
       <button class="floor-btn" data-floor="1">First Floor</button>
@@ -59,22 +58,22 @@
   </header>
   <main id="stage">
     <div class="viewport" id="vp">
-      <!-- STEP 3: Layers from BOTTOM to TOP
-           - Put your filename in data-src="..." (NOT src="...") so animated GIFs load paused at frame 0.
-           - Works with both .png/.webp (static 2K) and .gif (auto-enables Rotate slider). -->
       <div class="stack" id="stk">
         <div class="layer"><img data-src="GF.gif" alt="Ground Floor"></div>
         <div class="layer"><img data-src="FF.gif" alt="First Floor"></div>
         <div class="layer"><img data-src="Roof.gif" alt="Roof"></div>
       </div>
     </div>
+    <div class="status" id="status" style="display:none;"></div>
   </main>
   <script>
     const rng = document.getElementById("rng"), val = document.getElementById("val");
     const rotWrap = document.getElementById("rotWrap"), rotRng = document.getElementById("rotRng"), rotVal = document.getElementById("rotVal");
-    const stage = document.getElementById("stage"), vp = document.getElementById("vp");
+    const stage = document.getElementById("stage"), vp = document.getElementById("vp"), statusBox = document.getElementById("status");
     const layers = [...document.querySelectorAll(".layer")], floorBtns = [...document.querySelectorAll(".floor-btn")];
     const gifCtrls = [];
+
+    const showStatus = msg => { statusBox.style.display = "block"; statusBox.textContent = msg; };
 
     layers.forEach((l, i) => {
       l.style.zIndex = i + 1;
@@ -98,48 +97,44 @@
     layers.forEach(async l => {
       const img = l.querySelector("img"), src = img?.dataset.src || img?.getAttribute("src");
       if (!src) return;
-      if (!src.toLowerCase().endsWith(".gif") || !("ImageDecoder" in window)) { img.src = src; return; }
+      if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
+      if (!("ImageDecoder" in window)) { showStatus("Browser lacks ImageDecoder"); img.src = src; return; }
       try {
-        const res = await fetch(src);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const buf = await res.arrayBuffer();
-        const dec = new ImageDecoder({ data: buf, type: "image/gif" });
-        await dec.completed;
+        showStatus("Loading rotation frames...");
+        const res = await fetch(src + "?t=" + Date.now());
+        if (!res.ok) throw new Error(src + " HTTP " + res.status);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const dec = new ImageDecoder({ data: bytes, type: "image/gif" });
+        await dec.tracks.ready;
         const count = dec.tracks.selectedTrack.frameCount;
-        if (count <= 1) { img.src = src; return; }
+        if (count <= 1) { img.src = src; statusBox.style.display = "none"; return; }
+        const bitmaps = [];
+        for (let i = 0; i < count; i++) {
+          const { image } = await dec.decode({ frameIndex: i });
+          bitmaps.push(await createImageBitmap(image));
+          image.close();
+        }
         const c = document.createElement("canvas"), ctx = c.getContext("2d");
-        const first = await dec.decode({ frameIndex: 0 });
-        c.width = first.image.displayWidth; c.height = first.image.displayHeight;
-        ctx.drawImage(first.image, 0, 0);
-        first.image.close();
+        c.width = bitmaps[0].width; c.height = bitmaps[0].height;
+        ctx.drawImage(bitmaps[0], 0, 0);
         img.replaceWith(c);
-        const ctrl = { dec, ctx, c, count, busy: false, next: -1 };
-        gifCtrls.push(ctrl);
+        gifCtrls.push({ ctx, c, bitmaps, count });
         rotWrap.style.display = "flex";
         rotRng.max = count - 1;
+        statusBox.style.display = "none";
       } catch (e) {
-        console.warn("GIF decode error:", src, e);
+        showStatus("GIF error: " + e.message);
         img.src = src;
       }
     });
 
-    const renderFrame = async (g, idx) => {
-      if (g.busy) { g.next = idx; return; }
-      g.busy = true;
-      try {
-        const { image } = await g.dec.decode({ frameIndex: idx % g.count });
-        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
-        g.ctx.drawImage(image, 0, 0);
-        image.close();
-      } catch (e) {}
-      g.busy = false;
-      if (g.next !== -1) { const n = g.next; g.next = -1; renderFrame(g, n); }
-    };
-
     rotRng.oninput = () => {
       const idx = +rotRng.value, max = +rotRng.max || 1;
       rotVal.textContent = Math.round((idx / max) * 360) + "°";
-      gifCtrls.forEach(g => renderFrame(g, idx));
+      gifCtrls.forEach(g => {
+        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
+        g.ctx.drawImage(g.bitmaps[idx % g.count], 0, 0);
+      });
     };
 
     const getFit = () => Math.min(stage.clientWidth, stage.clientHeight) * 0.92 / 2048;
