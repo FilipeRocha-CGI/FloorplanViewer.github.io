@@ -23,9 +23,9 @@
   main:active { cursor:grabbing; }
   .viewport { display:flex; align-items:center; justify-content:center; transform-origin:center center; }
   .stack { position:relative; width:2048px; height:2048px; pointer-events:none; }
-  .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
+  .layer { position:absolute; inset:0; transition:opacity 0.25s ease; }
   .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
-  .layer.dimmed { opacity:0; filter:grayscale(100%); }
+  .layer.dimmed { opacity:0; }
   .status { position:fixed; bottom:10px; left:12px; background:rgba(28,31,38,0.9); border:1px solid #383e4d; color:var(--muted); font-size:11px; padding:4px 10px; border-radius:6px; z-index:30; }
   @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
   @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
@@ -33,13 +33,11 @@
 </head>
 <body>
   <header>
+    <h1>Isometric CGI Stack</h1>
     <div class="controls">
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
       <button class="floor-btn" data-floor="1">First Floor</button>
-      <!-- Uncomment below if you add a 3rd layer (Roof):
-      <button class="floor-btn" data-floor="2">Roof</button>
-      -->
       <div class="slider-wrap">
         <span>Spacing:</span>
         <input type="range" id="rng" min="0" max="650" value="0">
@@ -47,8 +45,8 @@
       </div>
       <div class="slider-wrap" id="rotWrap" style="display:none;">
         <span>Rotate:</span>
-        <input type="range" id="rotRng" min="0" max="6" value="0" step="1">
-        <span class="slider-val" id="rotVal">1 / 6</span>
+        <input type="range" id="rotRng" min="0" max="0" value="0" step="1">
+        <span class="slider-val" id="rotVal">1 / 1</span>
       </div>
       <div class="zoom-wrap">
         <button id="zOut" title="Zoom Out">-</button>
@@ -60,12 +58,9 @@
   <main id="stage">
     <div class="viewport" id="vp">
       <div class="stack" id="stk">
-        <!-- IMPORTANT: Always use data-src="..." (never src="...") so GIFs never auto-play -->
         <div class="layer"><img data-src="GF.gif" alt="Ground Floor"></div>
         <div class="layer"><img data-src="FF.gif" alt="First Floor"></div>
-        <!-- Uncomment below if you have Roof.gif in the same folder:-->
         <div class="layer"><img data-src="Roof.gif" alt="Roof"></div>
-        
       </div>
     </div>
     <div class="status" id="status" style="display:none;"></div>
@@ -110,25 +105,34 @@
         const bytes = new Uint8Array(await res.arrayBuffer());
         const dec = new ImageDecoder({ data: bytes, type: "image/gif" });
         await dec.tracks.ready;
-        await dec.completed;
-        const count = dec.tracks.selectedTrack.frameCount;
         const bitmaps = [];
-        for (let i = 0; i < count; i++) {
-          const { image } = await dec.decode({ frameIndex: i });
-          bitmaps.push(await createImageBitmap(image));
-          image.close();
+        for (let i = 0; ; i++) {
+          try {
+            const { image } = await dec.decode({ frameIndex: i });
+            bitmaps.push(await createImageBitmap(image));
+            image.close();
+          } catch (err) {
+            if (bitmaps.length > 0) break;
+            throw err;
+          }
         }
+        const count = bitmaps.length;
         const c = document.createElement("canvas"), ctx = c.getContext("2d");
         c.width = bitmaps[0].width; c.height = bitmaps[0].height;
         ctx.drawImage(bitmaps[0], 0, 0);
         img.replaceWith(c);
         gifCtrls.push({ ctx, c, bitmaps, count });
-        rotWrap.style.display = "flex";
-        rotRng.max = count - 1;
-        rotVal.textContent = "1 / " + count;
+        if (count > 1) {
+          rotWrap.style.display = "flex";
+          const curMax = +rotRng.max || 0;
+          if (count - 1 > curMax) {
+            rotRng.max = count - 1;
+            rotVal.textContent = "1 / " + count;
+          }
+        }
         statusBox.style.display = "none";
       } catch (e) {
-        showStatus("Error on " + src + ": " + e.message + " (Must run via http/https server)");
+        showStatus("Error on " + src + ": " + e.message);
       }
     });
 
