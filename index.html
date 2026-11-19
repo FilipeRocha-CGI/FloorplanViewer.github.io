@@ -1,167 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Isometric CGI Floorplan Stack</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plot 14 - The Lavenham | Aldeburgh Homes</title>
 <style>
-  :root { --bg:#111317; --panel:#1c1f26; --accent:#3b82f6; --text:#f3f4f6; --muted:#9ca3af; --spacing:0px; --shadow:0; }
+  :root { --dark:#18222f; --gold:#b58d53; --bg:#f8f9fa; --card:#fff; --text:#1f2937; --muted:#6b7280; --border:#e5e7eb; }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
-  header { background:var(--panel); border-bottom:1px solid #2d313c; padding:10px 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; z-index:10; }
-  h1 { font-size:14px; white-space:nowrap; }
-  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
-  button { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer; }
-  button:hover { background:#323746; }
-  button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .slider-wrap { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-left:4px; }
-  .slider-val { min-width:36px; color:var(--text); font-variant-numeric:tabular-nums; }
-  input[type="range"] { accent-color:var(--accent); cursor:pointer; width:100px; }
-  .zoom-wrap { display:flex; align-items:center; gap:4px; margin-left:4px; }
-  .zoom-wrap button { padding:6px 9px; font-weight:600; }
-  main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; touch-action:none; cursor:grab; }
-  main:active { cursor:grabbing; }
-  .viewport { display:flex; align-items:center; justify-content:center; transform-origin:center center; }
-  .stack { position:relative; width:2048px; height:2048px; pointer-events:none; }
-  .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
-  .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
-  .layer.dimmed { opacity:0; filter:grayscale(100%); }
-  @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
-  @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
+  body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  nav { background:var(--dark); color:#fff; padding:16px 5%; display:flex; justify-content:space-between; align-items:center; }
+  .logo { font-size:18px; font-weight:700; }
+  .logo span { color:var(--gold); }
+  .nav-links { display:flex; gap:20px; font-size:14px; color:#d1d5db; }
+  .nav-links a { color:inherit; text-decoration:none; }
+  .hero { background:var(--card); border-bottom:1px solid var(--border); padding:24px 5%; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; }
+  .badge { display:inline-block; background:#fef3c7; color:#92400e; font-size:12px; font-weight:600; padding:3px 9px; border-radius:4px; margin-bottom:4px; text-transform:uppercase; }
+  .hero h1 { font-size:26px; color:var(--dark); }
+  .hero p, .specs { color:var(--muted); font-size:14px; }
+  .price { font-size:24px; font-weight:700; color:var(--dark); text-align:right; }
+  .wrap { max-width:1200px; margin:0 auto; padding:32px 5%; display:flex; flex-direction:column; gap:40px; }
+  h2 { font-size:20px; color:var(--dark); margin-bottom:4px; }
+  .sub { font-size:14px; color:var(--muted); margin-bottom:14px; }
+  .fs-btn { position:absolute; top:12px; right:12px; z-index:25; background:rgba(17,19,23,0.85); color:#fff; border:1px solid rgba(255,255,255,0.25); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .fs-btn:hover { background:#3b82f6; border-color:#3b82f6; }
+  .fs-bot { top:auto; bottom:12px; }
+  .is-fs { position:fixed !important; inset:0 !important; width:100vw !important; height:100dvh !important; z-index:9999 !important; border-radius:0 !important; border:none !important; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.04); }
+  .stage { position:relative; width:100%; aspect-ratio:16/9; background:#111317; display:flex; align-items:center; justify-content:center; }
+  .stage img, .stage video { width:100%; height:100%; object-fit:contain; display:block; }
+  .cap { position:absolute; bottom:14px; left:14px; background:rgba(17,19,23,0.85); color:#fff; padding:5px 12px; border-radius:6px; font-size:13px; }
+  .thumbs { display:flex; gap:10px; padding:14px; background:#fff; overflow-x:auto; border-top:1px solid var(--border); }
+  .thumb { position:relative; width:120px; height:74px; border-radius:6px; overflow:hidden; cursor:pointer; border:2px solid transparent; flex-shrink:0; opacity:0.75; }
+  .thumb:hover, .thumb.active { opacity:1; }
+  .thumb.active { border-color:var(--gold); }
+  .thumb img { width:100%; height:100%; object-fit:cover; }
+  .vtag { position:absolute; inset:0; background:rgba(0,0,0,0.4); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .fp-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 4px 16px rgba(0,0,0,0.04); }
+  .fp-box { position:relative; width:100%; height:650px; border-radius:8px; overflow:hidden; background:#111317; border:1px solid #2d313c; }
+  .fp-box iframe { width:100%; height:100%; border:none; display:block; }
+  .hint { margin-top:10px; font-size:13px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  footer { background:var(--dark); color:#9ca3af; text-align:center; padding:20px 5%; font-size:13px; margin-top:32px; }
+  @media (max-width:768px) { .price { text-align:left; } .fp-box { height:520px; } }
 </style>
 </head>
 <body>
-  <header>
-    <!-- STEP 1: Edit building title -->
-    <h1>Isometric CGI Stack</h1>
-    <div class="controls">
-      <!-- STEP 2: Floor filter buttons (data-floor="0, 1, 2..." must match layer order in STEP 3) -->
-      <button class="floor-btn active" data-floor="all">All Floors</button>
-      <button class="floor-btn" data-floor="0">Ground Floor</button>
-      <button class="floor-btn" data-floor="1">First Floor</button>
-      <!--<button class="floor-btn" data-floor="2">Roof</button>-->
-      <div class="slider-wrap">
-        <span>Spacing:</span>
-        <input type="range" id="rng" min="0" max="650" value="0">
-        <span class="slider-val" id="val">0px</span>
-      </div>
-      <div class="slider-wrap" id="rotWrap" style="display:none;">
-        <span>Rotate:</span>
-        <input type="range" id="rotRng" min="0" max="1" value="0">
-        <span class="slider-val" id="rotVal">0°</span>
-      </div>
-      <div class="zoom-wrap">
-        <button id="zOut" title="Zoom Out">−</button>
-        <button id="zReset" title="Reset View">100%</button>
-        <button id="zIn" title="Zoom In">+</button>
-      </div>
+  <nav>
+    <div class="logo">ALDEBURGH <span>HOMES</span></div>
+    <div class="nav-links"><a href="#gallery">CGI Gallery</a><a href="#floorplans">3D Floorplans</a></div>
+  </nav>
+  <section class="hero">
+    <div>
+      <span class="badge">For Sale - Suffolk</span>
+      <h1>Plot 14: The Lavenham</h1>
+      <p>4 Bedroom Detached Family Home • Meadow View Development</p>
     </div>
-  </header>
-  <main id="stage">
-    <div class="viewport" id="vp">
-      <!-- STEP 3: Layers from BOTTOM to TOP (1st stays fixed; .png = static 2K, .gif = auto-enables Rotate slider) -->
-      <div class="stack" id="stk">
-        <div class="layer"><img src="GF.png" alt="Ground Floor"></div>
-        <div class="layer"><img src="FF.png" alt="First Floor"></div>
-        <div class="layer"><img src="Roof.png" alt="Roof"></div>
-      </div>
+    <div>
+      <div class="price">£545,000</div>
+      <div class="specs">1,840 sq ft • EPC Rating A • Freehold</div>
     </div>
+  </section>
+  <main class="wrap">
+    <section id="gallery">
+      <h2>Gallery</h2>
+      <div class="card">
+        <div class="stage" id="mainStage">
+          <button type="button" class="fs-btn" data-target="mainStage">Fullscreen</button>
+          <img id="activeImg" src="Butleigh Fields - House Type D (Sharpham).jpg" alt="Exterior CGI">
+         <!--  <video id="activeVid" controls loop muted playsinline style="display:none;"></video>-->
+          <div class="cap" id="mediaCaption">Front Exterior CGI - Dusk Lighting</div>
+        </div>
+        <!-- GALLERY THUMBNAILS: Edit data-src and img src below with your local CGI files -->
+        <div class="thumbs">
+          <div class="thumb active" data-type="img" data-src="Butleigh Fields - House Type D (Sharpham).jpg" data-caption="Front Exterior CGI">
+            <img src="Butleigh Fields - House Type D (Sharpham).jpg" alt="Exterior">
+          </div>
+          <div class="thumb" data-type="img" data-src="Butleigh_Siteplan_V2.jpg" data-caption="Site Map">
+            <img src="Butleigh_Siteplan_V2.jpg" alt="Kitchen">
+          </div>
+         <!--  <div class="thumb" data-type="video" data-src="https://mixkit.co" data-caption="3D Flythrough Animation">
+            <img src="https://unsplash.com" alt="Video">
+            <div class="vtag">VIDEO</div>
+          </div> -->
+        </div>
+      </div>
+    </section>
+    <section id="floorplans">
+      <h2>Interactive 3D Floorplans</h2>
+      <p class="sub">Use the spacing slider to separate storeys, isolate levels, or zoom in to inspect room layouts</p>
+      <div class="fp-card">
+        <div class="fp-box" id="fpBox">
+          <button type="button" class="fs-btn fs-bot" data-target="fpBox">Fullscreen</button>
+          <!-- FLOORPLAN LINK: Change src="Floorplan_A.html" below for different house types (case-sensitive) -->
+          <iframe src="Floorplan_A.html" title="Interactive 3D Floorplan Viewer" loading="lazy" allowfullscreen></iframe>
+        </div>
+        <div class="hint">
+          <span>Tip: Drag Spacing to lift upper floors • Scroll or pinch to zoom • Drag to pan</span>
+          <span>Visualisation by <strong>Filipe Rocha CGI</strong></span>
+        </div>
+      </div>
+    </section>
   </main>
+  <footer>Computer-generated images are for illustrative purposes only. Interactive 3D Floorplan Viewer by Filipe Rocha CGI.</footer>
   <script>
-    const rng = document.getElementById("rng"), val = document.getElementById("val");
-    const rotWrap = document.getElementById("rotWrap"), rotRng = document.getElementById("rotRng"), rotVal = document.getElementById("rotVal");
-    const stage = document.getElementById("stage"), vp = document.getElementById("vp");
-    const layers = [...document.querySelectorAll(".layer")], floorBtns = [...document.querySelectorAll(".floor-btn")];
-    const gifCtrls = [];
-
-    layers.forEach((l, i) => {
-      l.style.zIndex = i + 1;
-      l.style.transform = i === 0 ? "translateY(0px)" : `translateY(calc(var(--spacing) * -${i}))`;
+    const thumbs = document.querySelectorAll(".thumb"), img = document.getElementById("activeImg"), vid = document.getElementById("activeVid"), cap = document.getElementById("mediaCaption");
+    thumbs.forEach(t => t.onclick = () => {
+      thumbs.forEach(x => x.classList.remove("active")); t.classList.add("active"); cap.textContent = t.dataset.caption;
+      if (t.dataset.type === "video") { img.style.display = "none"; vid.style.display = "block"; vid.src = t.dataset.src; vid.play(); }
+      else { vid.pause(); vid.style.display = "none"; img.style.display = "block"; img.src = t.dataset.src; }
     });
-
-    floorBtns.forEach(b => b.onclick = () => {
-      floorBtns.forEach(x => x.classList.remove("active"));
-      b.classList.add("active");
-      const t = b.dataset.floor;
-      layers.forEach((l, i) => l.classList.toggle("dimmed", t !== "all" && Number(t) !== i));
+    document.querySelectorAll(".fs-btn").forEach(b => {
+      const box = document.getElementById(b.dataset.target);
+      b.onclick = async () => {
+        if (document.fullscreenElement === box) await document.exitFullscreen();
+        else if (box.classList.contains("is-fs")) { box.classList.remove("is-fs"); b.textContent = "Fullscreen"; }
+        else if (box.requestFullscreen) { try { await box.requestFullscreen(); } catch (e) { box.classList.add("is-fs"); b.textContent = "Exit"; } }
+        else { box.classList.add("is-fs"); b.textContent = "Exit"; }
+      };
     });
-
-    rng.oninput = () => {
-      const n = +rng.value;
-      val.textContent = Math.round(n / 2.6) + "px";
-      document.documentElement.style.setProperty("--spacing", n + "px");
-      document.documentElement.style.setProperty("--shadow", (Math.min(n / 150, 1) * 0.45).toFixed(2));
-    };
-
-    layers.forEach(async l => {
-      const img = l.querySelector("img"), src = img?.getAttribute("src");
-      if (!src || !src.toLowerCase().endsWith(".gif") || !("ImageDecoder" in window)) return;
-      try {
-        const res = await fetch(src);
-        const dec = new ImageDecoder({ data: res.body, type: "image/gif" });
-        await dec.tracks.ready;
-        const count = dec.tracks.selectedTrack.frameCount;
-        if (count <= 1) return;
-        const frames = [];
-        for (let i = 0; i < count; i++) {
-          const { image } = await dec.decode({ frameIndex: i });
-          frames.push(await createImageBitmap(image));
-          image.close();
-        }
-        const c = document.createElement("canvas");
-        c.width = frames[0].width; c.height = frames[0].height;
-        const ctx = c.getContext("2d");
-        ctx.drawImage(frames[0], 0, 0);
-        img.replaceWith(c);
-        gifCtrls.push({ ctx, c, frames, count });
-        rotWrap.style.display = "flex";
-        rotRng.max = count - 1;
-      } catch (e) {}
-    });
-
-    rotRng.oninput = () => {
-      const idx = +rotRng.value, max = +rotRng.max || 1;
-      rotVal.textContent = Math.round((idx / max) * 360) + "°";
-      gifCtrls.forEach(g => {
-        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
-        g.ctx.drawImage(g.frames[idx % g.count], 0, 0);
+    document.addEventListener("fullscreenchange", () => {
+      document.querySelectorAll(".fs-btn").forEach(b => {
+        b.textContent = document.fullscreenElement === document.getElementById(b.dataset.target) ? "Exit" : "Fullscreen";
       });
-    };
-
-    const getFit = () => Math.min(stage.clientWidth, stage.clientHeight) * 0.92 / 2048;
-    let base = getFit(), zoom = 1, tx = 0, ty = 0, lastD = 0, lastM = null;
-    const pts = new Map();
-    const apply = () => { vp.style.transform = `translate(${tx}px,${ty}px) scale(${base * zoom})`; zReset.textContent = Math.round(zoom * 100) + "%"; };
-    const setZ = (nxt, cx = 0, cy = 0) => {
-      const prev = zoom; zoom = Math.min(Math.max(nxt, 0.75), 4);
-      const r = zoom / prev; tx = cx - (cx - tx) * r; ty = cy - (cy - ty) * r;
-      if (zoom === 1 && Math.abs(tx) < 5 && Math.abs(ty) < 5) { tx = 0; ty = 0; }
-      apply();
-    };
-    const reset = () => { base = getFit(); zoom = 1; tx = 0; ty = 0; apply(); };
-    window.onresize = () => { base = getFit(); apply(); };
-    reset();
-    zIn.onclick = () => setZ(zoom + 0.35); zOut.onclick = () => setZ(zoom - 0.35);
-    zReset.onclick = reset; stage.ondblclick = reset;
-    stage.addEventListener("wheel", e => {
-      e.preventDefault();
-      const r = stage.getBoundingClientRect();
-      setZ(zoom * (e.deltaY < 0 ? 1.12 : 0.89), e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
-    }, { passive: false });
-    stage.onpointerdown = e => { stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); lastD = 0; lastM = null; };
-    stage.onpointermove = e => {
-      if (!pts.has(e.pointerId)) return;
-      const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pts.size === 1) { tx += e.clientX - prev.x; ty += e.clientY - prev.y; apply(); }
-      else if (pts.size === 2) {
-        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = stage.getBoundingClientRect();
-        const m = { x: (a.x + b.x) / 2 - (r.left + r.width / 2), y: (a.y + b.y) / 2 - (r.top + r.height / 2) };
-        if (lastD > 0 && lastM) { tx += m.x - lastM.x; ty += m.y - lastM.y; setZ(zoom * (d / lastD), m.x, m.y); }
-        lastD = d; lastM = m;
-      }
-    };
-    const endP = e => { pts.delete(e.pointerId); lastD = 0; lastM = null; };
-    stage.onpointerup = endP; stage.onpointercancel = endP;
+    });
   </script>
 </body>
 </html>

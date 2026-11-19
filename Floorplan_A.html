@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Isometric CGI Floorplan Stack</title>
+<style>
+  :root { --bg:#111317; --panel:#1c1f26; --accent:#3b82f6; --text:#f3f4f6; --muted:#9ca3af; --spacing:0px; --shadow:0; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  header { background:var(--panel); border-bottom:1px solid #2d313c; padding:10px 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; z-index:10; }
+  h1 { font-size:14px; white-space:nowrap; }
+  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  button { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer; }
+  button:hover { background:#323746; }
+  button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .slider-wrap { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-left:4px; }
+  .slider-val { min-width:36px; color:var(--text); font-variant-numeric:tabular-nums; }
+  input[type="range"] { accent-color:var(--accent); cursor:pointer; width:100px; }
+  .zoom-wrap { display:flex; align-items:center; gap:4px; margin-left:4px; }
+  .zoom-wrap button { padding:6px 9px; font-weight:600; }
+  main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; touch-action:none; cursor:grab; }
+  main:active { cursor:grabbing; }
+  .viewport { display:flex; align-items:center; justify-content:center; transform-origin:center center; }
+  .stack { position:relative; width:2048px; height:2048px; pointer-events:none; }
+  .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
+  .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
+  .layer.dimmed { opacity:0; filter:grayscale(100%); }
+  @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
+  @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
+</style>
+</head>
+<body>
+  <header>
+    <!-- STEP 1: Edit building title -->
+    <div class="controls">
+      <!-- STEP 2: Floor filter buttons (data-floor="0, 1, 2..." must match layer order in STEP 3) -->
+      <button class="floor-btn active" data-floor="all">All Floors</button>
+      <button class="floor-btn" data-floor="0">Ground Floor</button>
+      <button class="floor-btn" data-floor="1">First Floor</button>
+      <!--<button class="floor-btn" data-floor="2">Roof</button>-->
+      <div class="slider-wrap">
+        <span>Spacing:</span>
+        <input type="range" id="rng" min="0" max="650" value="0">
+        <span class="slider-val" id="val">0px</span>
+      </div>
+      <div class="slider-wrap" id="rotWrap" style="display:none;">
+        <span>Rotate:</span>
+        <input type="range" id="rotRng" min="0" max="1" value="0">
+        <span class="slider-val" id="rotVal">0°</span>
+      </div>
+      <div class="zoom-wrap">
+        <button id="zOut" title="Zoom Out">−</button>
+        <button id="zReset" title="Reset View">100%</button>
+        <button id="zIn" title="Zoom In">+</button>
+      </div>
+    </div>
+  </header>
+  <main id="stage">
+    <div class="viewport" id="vp">
+      <!-- STEP 3: Layers from BOTTOM to TOP (1st stays fixed; .png = static 2K, .gif = auto-enables Rotate slider) -->
+      <div class="stack" id="stk">
+        <div class="layer"><img src="GF.png" alt="Ground Floor"></div>
+        <div class="layer"><img src="FF.png" alt="First Floor"></div>
+        <div class="layer"><img src="Roof.png" alt="Roof"></div>
+      </div>
+    </div>
+  </main>
+  <script>
+    const rng = document.getElementById("rng"), val = document.getElementById("val");
+    const rotWrap = document.getElementById("rotWrap"), rotRng = document.getElementById("rotRng"), rotVal = document.getElementById("rotVal");
+    const stage = document.getElementById("stage"), vp = document.getElementById("vp");
+    const layers = [...document.querySelectorAll(".layer")], floorBtns = [...document.querySelectorAll(".floor-btn")];
+    const gifCtrls = [];
+
+    layers.forEach((l, i) => {
+      l.style.zIndex = i + 1;
+      l.style.transform = i === 0 ? "translateY(0px)" : `translateY(calc(var(--spacing) * -${i}))`;
+    });
+
+    floorBtns.forEach(b => b.onclick = () => {
+      floorBtns.forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      const t = b.dataset.floor;
+      layers.forEach((l, i) => l.classList.toggle("dimmed", t !== "all" && Number(t) !== i));
+    });
+
+    rng.oninput = () => {
+      const n = +rng.value;
+      val.textContent = Math.round(n / 2.6) + "px";
+      document.documentElement.style.setProperty("--spacing", n + "px");
+      document.documentElement.style.setProperty("--shadow", (Math.min(n / 150, 1) * 0.45).toFixed(2));
+    };
+
+    layers.forEach(async l => {
+      const img = l.querySelector("img"), src = img?.getAttribute("src");
+      if (!src || !src.toLowerCase().endsWith(".gif") || !("ImageDecoder" in window)) return;
+      try {
+        const res = await fetch(src);
+        const dec = new ImageDecoder({ data: res.body, type: "image/gif" });
+        await dec.tracks.ready;
+        const count = dec.tracks.selectedTrack.frameCount;
+        if (count <= 1) return;
+        const frames = [];
+        for (let i = 0; i < count; i++) {
+          const { image } = await dec.decode({ frameIndex: i });
+          frames.push(await createImageBitmap(image));
+          image.close();
+        }
+        const c = document.createElement("canvas");
+        c.width = frames[0].width; c.height = frames[0].height;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(frames[0], 0, 0);
+        img.replaceWith(c);
+        gifCtrls.push({ ctx, c, frames, count });
+        rotWrap.style.display = "flex";
+        rotRng.max = count - 1;
+      } catch (e) {}
+    });
+
+    rotRng.oninput = () => {
+      const idx = +rotRng.value, max = +rotRng.max || 1;
+      rotVal.textContent = Math.round((idx / max) * 360) + "°";
+      gifCtrls.forEach(g => {
+        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
+        g.ctx.drawImage(g.frames[idx % g.count], 0, 0);
+      });
+    };
+
+    const getFit = () => Math.min(stage.clientWidth, stage.clientHeight) * 0.92 / 2048;
+    let base = getFit(), zoom = 1, tx = 0, ty = 0, lastD = 0, lastM = null;
+    const pts = new Map();
+    const apply = () => { vp.style.transform = `translate(${tx}px,${ty}px) scale(${base * zoom})`; zReset.textContent = Math.round(zoom * 100) + "%"; };
+    const setZ = (nxt, cx = 0, cy = 0) => {
+      const prev = zoom; zoom = Math.min(Math.max(nxt, 0.75), 4);
+      const r = zoom / prev; tx = cx - (cx - tx) * r; ty = cy - (cy - ty) * r;
+      if (zoom === 1 && Math.abs(tx) < 5 && Math.abs(ty) < 5) { tx = 0; ty = 0; }
+      apply();
+    };
+    const reset = () => { base = getFit(); zoom = 1; tx = 0; ty = 0; apply(); };
+    window.onresize = () => { base = getFit(); apply(); };
+    reset();
+    zIn.onclick = () => setZ(zoom + 0.35); zOut.onclick = () => setZ(zoom - 0.35);
+    zReset.onclick = reset; stage.ondblclick = reset;
+    stage.addEventListener("wheel", e => {
+      e.preventDefault();
+      const r = stage.getBoundingClientRect();
+      setZ(zoom * (e.deltaY < 0 ? 1.12 : 0.89), e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+    }, { passive: false });
+    stage.onpointerdown = e => { stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); lastD = 0; lastM = null; };
+    stage.onpointermove = e => {
+      if (!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) { tx += e.clientX - prev.x; ty += e.clientY - prev.y; apply(); }
+      else if (pts.size === 2) {
+        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = stage.getBoundingClientRect();
+        const m = { x: (a.x + b.x) / 2 - (r.left + r.width / 2), y: (a.y + b.y) / 2 - (r.top + r.height / 2) };
+        if (lastD > 0 && lastM) { tx += m.x - lastM.x; ty += m.y - lastM.y; setZ(zoom * (d / lastD), m.x, m.y); }
+        lastD = d; lastM = m;
+      }
+    };
+    const endP = e => { pts.delete(e.pointerId); lastD = 0; lastM = null; };
+    stage.onpointerup = endP; stage.onpointercancel = endP;
+  </script>
+</body>
+</html>
