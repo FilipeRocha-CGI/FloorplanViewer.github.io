@@ -109,7 +109,7 @@
         if (!res.ok) throw new Error(src + " (" + res.status + ")");
         const bytes = new Uint8Array(await res.arrayBuffer());
         const dec = new ImageDecoder({ data: bytes, type: "image/gif" });
-        await dec.tracks.ready;
+        await dec.completed;
         const count = dec.tracks.selectedTrack.frameCount;
         const bitmaps = [];
         for (let i = 0; i < count; i++) {
