@@ -33,6 +33,7 @@
 </head>
 <body>
   <header>
+    <h1>Isometric CGI Stack</h1>
     <div class="controls">
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
@@ -92,7 +93,7 @@
       document.documentElement.style.setProperty("--shadow", (Math.min(n / 150, 1) * 0.45).toFixed(2));
     };
 
-        layers.forEach(async l => {
+    layers.forEach(async l => {
       const img = l.querySelector("img"), src = img?.dataset.src;
       if (!src) return;
       if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
@@ -116,9 +117,10 @@
           }
         }
         const count = bitmaps.length;
+        const firstBmp = bitmaps.at(0);
         const c = document.createElement("canvas"), ctx = c.getContext("2d");
-        c.width = bitmaps.width; c.height = bitmaps.height;
-        ctx.drawImage(bitmaps, 0, 0);
+        c.width = firstBmp.width; c.height = firstBmp.height;
+        ctx.drawImage(firstBmp, 0, 0);
         img.replaceWith(c);
         gifCtrls.push({ ctx, c, bitmaps, count });
         if (count > 1) {
@@ -135,13 +137,12 @@
       }
     });
 
-
     rotRng.oninput = () => {
       const idx = +rotRng.value, count = (+rotRng.max || 0) + 1;
       rotVal.textContent = (idx + 1) + " / " + count;
       gifCtrls.forEach(g => {
         g.ctx.clearRect(0, 0, g.c.width, g.c.height);
-        g.ctx.drawImage(g.bitmaps[idx % g.count], 0, 0);
+        g.ctx.drawImage(g.bitmaps.at(idx % g.count), 0, 0);
       });
     };
 
