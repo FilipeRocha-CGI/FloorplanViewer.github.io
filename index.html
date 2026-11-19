@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>2-Storey Isometric CGI Stack</title>
+<title>Isometric CGI Floorplan Stack</title>
 <style>
   :root { --bg:#111317; --panel:#1c1f26; --accent:#3b82f6; --text:#f3f4f6; --muted:#9ca3af; --spacing:0px; --shadow:0; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -25,9 +25,7 @@
   .stack { position:relative; width:min(94vw, 72dvh, 720px); height:min(94vw, 72dvh, 720px); pointer-events:none; }
   .layer { position:absolute; inset:0; transition:opacity 0.3s ease, filter 0.3s ease; }
   .layer img { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 14px 24px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
-  .f1 { z-index:1; transform:translateY(calc(var(--spacing) * 0.5)); }
-  .f2 { z-index:2; transform:translateY(calc(var(--spacing) * -0.5)); }
-  .stack.iso-1 .layer:not(.f1), .stack.iso-2 .layer:not(.f2) { opacity:0.12; filter:grayscale(100%); }
+  .layer.dimmed { opacity:0; filter:grayscale(100%); }
   @media (max-width: 640px) {
     header { padding:8px 12px; gap:8px; }
     h1 { width:100%; font-size:13px; }
@@ -46,13 +44,28 @@
 </head>
 <body>
   <header>
-    <h1>2-Storey Isometric CGI Stack</h1>
+    <!-- STEP 1: Edit the building title below -->
+    <h1>Isometric CGI Stack</h1>
+
     <div class="controls">
-      <button id="bAll" class="active">All Floors</button>
-      <button id="b1">Ground Floor</button>
-      <button id="b2">First Floor</button>
+      <!-- STEP 2: FLOOR FILTER BUTTONS
+           - Keep "All Floors" (data-floor="all") first.
+           - Add or remove floor buttons below.
+           - The data-floor number (0, 1, 2, 3...) MUST match the order of your images in STEP 3 (0 = bottom/Ground Floor). -->
+      <button class="floor-btn active" data-floor="all">All Floors</button>
+      <button class="floor-btn" data-floor="0">Ground Floor</button>
+      <button class="floor-btn" data-floor="1">First Floor</button>
+      <!--<button class="floor-btn" data-floor="2">Roof</button> -->
+      <!-- Example for a 3-storey house + roof:
+      <button class="floor-btn" data-floor="0">Ground Floor</button>
+      <button class="floor-btn" data-floor="1">First Floor</button>
+      <button class="floor-btn" data-floor="2">Second Floor</button>
+      <button class="floor-btn" data-floor="3">Roof</button>
+      -->
+
       <div class="slider-wrap">
         <span>Spacing:</span>
+        <!-- Tip: Increase max="250" to max="350" if you have 4+ floors so they have plenty of room to rise -->
         <input type="range" id="rng" min="0" max="250" value="0">
         <span class="slider-val" id="val">0px</span>
       </div>
@@ -63,26 +76,47 @@
       </div>
     </div>
   </header>
+
   <main id="stage">
     <div class="viewport" id="vp">
+      <!-- STEP 3: FLOOR IMAGE LAYERS (Listed from BOTTOM to TOP)
+           - The 1st image (index 0) is ALWAYS anchored/fixed at 0px when sliding.
+           - Each image listed below it automatically stacks on top and rises upward by (index * spacing).
+           - Remember: GitHub filenames are case-sensitive (e.g., GF.png vs gf.png). -->
       <div class="stack" id="stk">
-        <div class="layer f1"><img src="GF.png" alt="Ground Floor"></div>
-        <div class="layer f2"><img src="FF.png" alt="First Floor"></div>
+        <div class="layer"><img src="GF.png" alt="Ground Floor"></div>
+        <div class="layer"><img src="FF.png" alt="First Floor"></div>
+        <div class="layer"><img src="Roof.png" alt="Roof"></div>
       </div>
     </div>
   </main>
+
   <script>
-    const stk = document.getElementById("stk"), rng = document.getElementById("rng"), val = document.getElementById("val");
+    // NO EDITS NEEDED BELOW THIS LINE — JavaScript automatically detects how many layers you added in STEP 3
+    const rng = document.getElementById("rng"), val = document.getElementById("val");
     const stage = document.getElementById("stage"), vp = document.getElementById("vp");
-    const btns = [bAll, b1, b2];
-    const setIso = (cls, b) => {
-      btns.forEach(x => x.classList.remove("active"));
-      b.classList.add("active");
-      stk.className = "stack" + (cls ? " " + cls : "");
-    };
-    bAll.onclick = () => setIso("", bAll);
-    b1.onclick = () => setIso("iso-1", b1);
-    b2.onclick = () => setIso("iso-2", b2);
+    const layers = [...document.querySelectorAll(".layer")];
+    const floorBtns = [...document.querySelectorAll(".floor-btn")];
+
+    // Automatically assign z-index and upward vertical offset (Index 0 stays fixed at 0px)
+    layers.forEach((layer, index) => {
+      layer.style.zIndex = index + 1;
+      layer.style.transform = index === 0 ? "translateY(0px)" : `translateY(calc(var(--spacing) * -${index}))`;
+    });
+
+    // Floor isolation filter buttons
+    floorBtns.forEach(btn => {
+      btn.onclick = () => {
+        floorBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const target = btn.dataset.floor;
+        layers.forEach((layer, index) => {
+          layer.classList.toggle("dimmed", target !== "all" && Number(target) !== index);
+        });
+      };
+    });
+
+    // Smooth vertical spacing slider
     rng.oninput = () => {
       const n = +rng.value;
       val.textContent = n + "px";
@@ -90,6 +124,7 @@
       document.documentElement.style.setProperty("--shadow", (Math.min(n / 60, 1) * 0.45).toFixed(2));
     };
 
+    // Zoom & pan navigation
     let scale = 1, tx = 0, ty = 0;
     const pts = new Map();
     let lastDist = 0, lastMid = null;
