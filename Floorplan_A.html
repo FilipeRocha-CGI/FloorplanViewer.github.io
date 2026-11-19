@@ -38,7 +38,9 @@
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
       <button class="floor-btn" data-floor="1">First Floor</button>
+      <!-- Uncomment below if you add a 3rd layer (Roof):
       <button class="floor-btn" data-floor="2">Roof</button>
+      -->
       <div class="slider-wrap">
         <span>Spacing:</span>
         <input type="range" id="rng" min="0" max="650" value="0">
@@ -46,8 +48,8 @@
       </div>
       <div class="slider-wrap" id="rotWrap" style="display:none;">
         <span>Rotate:</span>
-        <input type="range" id="rotRng" min="0" max="1" value="0">
-        <span class="slider-val" id="rotVal">0°</span>
+        <input type="range" id="rotRng" min="0" max="5" value="0" step="1">
+        <span class="slider-val" id="rotVal">1 / 6</span>
       </div>
       <div class="zoom-wrap">
         <button id="zOut" title="Zoom Out">-</button>
@@ -59,9 +61,12 @@
   <main id="stage">
     <div class="viewport" id="vp">
       <div class="stack" id="stk">
+        <!-- IMPORTANT: Always use data-src="..." (never src="...") so GIFs never auto-play -->
         <div class="layer"><img data-src="GF.gif" alt="Ground Floor"></div>
         <div class="layer"><img data-src="FF.gif" alt="First Floor"></div>
+        <!-- Uncomment below if you have Roof.gif in the same folder:
         <div class="layer"><img data-src="Roof.gif" alt="Roof"></div>
+        -->
       </div>
     </div>
     <div class="status" id="status" style="display:none;"></div>
@@ -95,19 +100,18 @@
     };
 
     layers.forEach(async l => {
-      const img = l.querySelector("img"), src = img?.dataset.src || img?.getAttribute("src");
+      const img = l.querySelector("img"), src = img?.dataset.src;
       if (!src) return;
       if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
-      if (!("ImageDecoder" in window)) { showStatus("Browser lacks ImageDecoder"); img.src = src; return; }
+      if (!("ImageDecoder" in window)) { showStatus("Use Chrome/Edge for GIF scrubbing"); return; }
       try {
-        showStatus("Loading rotation frames...");
-        const res = await fetch(src + "?t=" + Date.now());
-        if (!res.ok) throw new Error(src + " HTTP " + res.status);
+        showStatus("Loading frames...");
+        const res = await fetch(src + "?v=" + Date.now());
+        if (!res.ok) throw new Error(src + " (" + res.status + ")");
         const bytes = new Uint8Array(await res.arrayBuffer());
         const dec = new ImageDecoder({ data: bytes, type: "image/gif" });
         await dec.tracks.ready;
         const count = dec.tracks.selectedTrack.frameCount;
-        if (count <= 1) { img.src = src; statusBox.style.display = "none"; return; }
         const bitmaps = [];
         for (let i = 0; i < count; i++) {
           const { image } = await dec.decode({ frameIndex: i });
@@ -121,16 +125,16 @@
         gifCtrls.push({ ctx, c, bitmaps, count });
         rotWrap.style.display = "flex";
         rotRng.max = count - 1;
+        rotVal.textContent = "1 / " + count;
         statusBox.style.display = "none";
       } catch (e) {
-        showStatus("GIF error: " + e.message);
-        img.src = src;
+        showStatus("Error on " + src + ": " + e.message + " (Must run via http/https server)");
       }
     });
 
     rotRng.oninput = () => {
-      const idx = +rotRng.value, max = +rotRng.max || 1;
-      rotVal.textContent = Math.round((idx / max) * 360) + "°";
+      const idx = +rotRng.value, count = (+rotRng.max || 0) + 1;
+      rotVal.textContent = (idx + 1) + " / " + count;
       gifCtrls.forEach(g => {
         g.ctx.clearRect(0, 0, g.c.width, g.c.height);
         g.ctx.drawImage(g.bitmaps[idx % g.count], 0, 0);
