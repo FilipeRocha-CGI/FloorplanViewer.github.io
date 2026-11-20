@@ -37,21 +37,9 @@
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
       <button class="floor-btn" data-floor="1">First Floor</button>
-      <div class="slider-wrap">
-        <span>Spacing:</span>
-        <input type="range" id="rng" min="0" max="650" value="0">
-        <span class="slider-val" id="val">0px</span>
-      </div>
-      <div class="slider-wrap" id="rotWrap" style="display:none;">
-        <span>Rotate:</span>
-        <input type="range" id="rotRng" min="0" max="0" value="0" step="1">
-        <span class="slider-val" id="rotVal">1 / 1</span>
-      </div>
-      <div class="zoom-wrap">
-        <button id="zOut" title="Zoom Out">-</button>
-        <button id="zReset" title="Reset View">100%</button>
-        <button id="zIn" title="Zoom In">+</button>
-      </div>
+      <div class="slider-wrap"><span>Spacing:</span><input type="range" id="rng" min="0" max="650" value="0"><span class="slider-val" id="val">0px</span></div>
+      <div class="slider-wrap" id="rotWrap" style="display:none;"><span>Rotate:</span><input type="range" id="rotRng" min="0" max="0" value="0" step="1"><span class="slider-val" id="rotVal">1 / 1</span></div>
+      <div class="zoom-wrap"><button id="zOut" title="Zoom Out">-</button><button id="zReset" title="Reset View">100%</button><button id="zIn" title="Zoom In">+</button></div>
     </div>
   </header>
   <main id="stage">
@@ -70,90 +58,73 @@
     const layers = [...document.querySelectorAll(".layer")], floorBtns = [...document.querySelectorAll(".floor-btn")];
     const gifCtrls = [];
 
-    layers.forEach((l, i) => {
-      l.style.zIndex = i + 1;
-      l.style.transform = i === 0 ? "translateY(0px)" : `translateY(calc(var(--spacing) * -${i}))`;
-    });
-
+    layers.forEach((l, i) => { l.style.zIndex = i + 1; l.style.transform = i === 0 ? "translateY(0px)" : `translateY(calc(var(--spacing) * -${i}))`; });
     floorBtns.forEach(b => b.onclick = () => {
-      floorBtns.forEach(x => x.classList.remove("active"));
-      b.classList.add("active");
-      const t = b.dataset.floor;
-      layers.forEach((l, i) => l.classList.toggle("dimmed", t !== "all" && Number(t) !== i));
+      floorBtns.forEach(x => x.classList.remove("active")); b.classList.add("active");
+      const t = b.dataset.floor; layers.forEach((l, i) => l.classList.toggle("dimmed", t !== "all" && Number(t) !== i));
     });
-
     rng.oninput = () => {
-      const n = +rng.value;
-      val.textContent = Math.round(n / 2.6) + "px";
+      const n = +rng.value; val.textContent = Math.round(n / 2.6) + "px";
       document.documentElement.style.setProperty("--spacing", n + "px");
       document.documentElement.style.setProperty("--shadow", (Math.min(n / 150, 1) * 0.45).toFixed(2));
     };
 
     async function decodeGif(buf) {
       if ("ImageDecoder" in window) {
-        const dec = new ImageDecoder({ data: buf, type: "image/gif" });
-        await dec.completed;
-        const bitmaps = [];
-        for (let i = 0; ; i++) {
-          try {
-            const { image } = await dec.decode({ frameIndex: i, completeFramesOnly: true });
-            bitmaps.push(await createImageBitmap(image));
-            image.close();
-          } catch { break; }
-        }
-        return bitmaps;
+        try {
+          const dec = new ImageDecoder({ data: buf.slice(0), type: "image/gif" });
+          await dec.completed;
+          const native = [];
+          for (let i = 0; ; i++) {
+            try {
+              const { image } = await dec.decode({ frameIndex: i, completeFramesOnly: true });
+              native.push(await createImageBitmap(image)); image.close();
+            } catch { break; }
+          }
+          if (native.length > 0) return native;
+        } catch {}
       }
-      const { parseGIF, decompressFrames } = await import("https://jsdelivr.net");
-      const gif = parseGIF(buf);
-      const rawFrames = decompressFrames(gif, true);
-      const w = gif.lsd.width, h = gif.lsd.height;
-      const comp = document.createElement("canvas");
+      const { parseGIF, decompressFrames } = await import("https://esm.sh");
+      const gif = parseGIF(buf), raw = decompressFrames(gif, true), w = gif.lsd.width, h = gif.lsd.height;
+      const comp = document.createElement("canvas"), patch = document.createElement("canvas");
       comp.width = w; comp.height = h;
-      const cctx = comp.getContext("2d");
-      const patch = document.createElement("canvas");
-      const pctx = patch.getContext("2d");
-      const bitmaps = [];
-      for (const f of rawFrames) {
+      const cctx = comp.getContext("2d"), pctx = patch.getContext("2d"), safari = [];
+      for (const f of raw) {
         if (f.disposalType === 2) cctx.clearRect(0, 0, w, h);
         patch.width = f.dims.width; patch.height = f.dims.height;
-        const imgData = pctx.createImageData(f.dims.width, f.dims.height);
-        imgData.data.set(f.patch);
-        pctx.putImageData(imgData, 0, 0);
+        const id = pctx.createImageData(f.dims.width, f.dims.height);
+        id.data.set(f.patch); pctx.putImageData(id, 0, 0);
         cctx.drawImage(patch, f.dims.left, f.dims.top);
-        bitmaps.push(await createImageBitmap(comp));
+        safari.push(await createImageBitmap(cctx.getImageData(0, 0, w, h)));
       }
-      return bitmaps;
+      return safari;
     }
 
     layers.forEach(async l => {
       const img = l.querySelector("img"), src = img?.dataset.src;
       if (!src) return;
       if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
-      const res = await fetch(src);
-      const bitmaps = await decodeGif(await res.arrayBuffer());
-      const count = bitmaps.length, first = bitmaps.at(0);
-      if (!first) return;
-      const c = document.createElement("canvas"), ctx = c.getContext("2d");
-      c.width = first.width; c.height = first.height;
-      ctx.drawImage(first, 0, 0);
-      img.replaceWith(c);
-      gifCtrls.push({ ctx, c, bitmaps, count });
-      if (count > 1) {
-        rotWrap.style.display = "flex";
-        if (count - 1 >= (+rotRng.max || 0)) {
-          rotRng.max = count - 1;
-          rotVal.textContent = "1 / " + count;
+      try {
+        const res = await fetch(src);
+        if (!res.ok) return;
+        const bitmaps = await decodeGif(await res.arrayBuffer());
+        const count = bitmaps.length, first = bitmaps.at(0);
+        if (!first) return;
+        const c = document.createElement("canvas"), ctx = c.getContext("2d");
+        c.width = first.width; c.height = first.height; ctx.drawImage(first, 0, 0);
+        img.replaceWith(c);
+        gifCtrls.push({ ctx, c, bitmaps, count });
+        if (count > 1) {
+          rotWrap.style.display = "flex";
+          if (count - 1 >= (+rotRng.max || 0)) { rotRng.max = count - 1; rotVal.textContent = "1 / " + count; }
         }
-      }
+      } catch {}
     });
 
     rotRng.oninput = () => {
       const idx = +rotRng.value, count = (+rotRng.max || 0) + 1;
       rotVal.textContent = (idx + 1) + " / " + count;
-      gifCtrls.forEach(g => {
-        g.ctx.clearRect(0, 0, g.c.width, g.c.height);
-        g.ctx.drawImage(g.bitmaps.at(idx % g.count), 0, 0);
-      });
+      gifCtrls.forEach(g => { g.ctx.clearRect(0, 0, g.c.width, g.c.height); g.ctx.drawImage(g.bitmaps.at(idx % g.count), 0, 0); });
     };
 
     const getFit = () => Math.min(stage.clientWidth, stage.clientHeight) * 0.92 / 2048;
@@ -172,8 +143,7 @@
     zIn.onclick = () => setZ(zoom + 0.35); zOut.onclick = () => setZ(zoom - 0.35);
     zReset.onclick = reset; stage.ondblclick = reset;
     stage.addEventListener("wheel", e => {
-      e.preventDefault();
-      const r = stage.getBoundingClientRect();
+      e.preventDefault(); const r = stage.getBoundingClientRect();
       setZ(zoom * (e.deltaY < 0 ? 1.12 : 0.89), e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
     }, { passive: false });
     stage.onpointerdown = e => { stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); lastD = 0; lastM = null; };
@@ -192,3 +162,4 @@
     stage.onpointerup = endP; stage.onpointercancel = endP;
   </script>
 </body>
+</html>
