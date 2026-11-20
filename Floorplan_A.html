@@ -5,29 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Isometric CGI Floorplan Stack</title>
 <style>
-  :root { --bg:#111317; --panel:#1c1f26; --accent:#3b82f6; --text:#f3f4f6; --muted:#9ca3af; --spacing:0px; --shadow:0; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
-  header { background:var(--panel); border-bottom:1px solid #2d313c; padding:10px 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; z-index:10; }
-  h1 { font-size:14px; white-space:nowrap; }
-  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
-  button { background:#272b36; color:var(--text); border:1px solid #383e4d; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer; }
-  button:hover { background:#323746; }
-  button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .slider-wrap { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-left:4px; }
-  .slider-val { display:none; }
-  input[type="range"] { accent-color:var(--accent); cursor:pointer; width:100px; }
-  .zoom-wrap { display:flex; align-items:center; gap:4px; margin-left:4px; }
-  .zoom-wrap button { padding:6px 9px; font-weight:600; }
-  main { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; touch-action:none; cursor:grab; }
-  main:active { cursor:grabbing; }
-  .viewport { display:flex; align-items:center; justify-content:center; transform-origin:center center; }
-  .stack { position:relative; width:2048px; height:2048px; pointer-events:none; }
-  .layer { position:absolute; inset:0; transition:opacity 0.25s ease; }
-  .layer img, .layer canvas { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow))); user-select:none; -webkit-user-drag:none; }
-  .layer.dimmed { opacity:0; }
-  @media (max-width:640px) { header { padding:8px 12px; gap:8px; } h1 { width:100%; font-size:13px; } .controls { width:100%; justify-content:space-between; } .slider-wrap { flex:1; min-width:130px; } input[type="range"] { flex:1; width:auto; } }
-  @media (orientation:landscape) and (max-height:500px) { header { padding:6px 12px; flex-wrap:nowrap; } h1 { display:none; } .controls { width:100%; justify-content:space-between; } }
+  :root{--bg:#111317;--panel:#1c1f26;--accent:#3b82f6;--text:#f3f4f6;--muted:#9ca3af;--spacing:0px;--shadow:0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+  header{background:var(--panel);border-bottom:1px solid #2d313c;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;z-index:10}
+  h1{font-size:14px;white-space:nowrap}
+  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  button{background:#272b36;color:var(--text);border:1px solid #383e4d;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer}
+  button:hover{background:#323746}
+  button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .slider-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:4px}
+  .slider-val{display:none}
+  input[type="range"]{accent-color:var(--accent);cursor:pointer;width:100px}
+  .zoom-wrap{display:flex;align-items:center;gap:4px;margin-left:4px}
+  .zoom-wrap button{padding:6px 9px;font-weight:600}
+  main{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;touch-action:none;cursor:grab}
+  main:active{cursor:grabbing}
+  .viewport{display:flex;align-items:center;justify-content:center;transform-origin:center center}
+  .stack{position:relative;width:2048px;height:2048px;pointer-events:none}
+  .layer{position:absolute;inset:0;transition:opacity 0.25s ease}
+  .layer img,.layer canvas{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 28px 48px rgba(0,0,0,var(--shadow)));user-select:none;-webkit-user-drag:none}
+  .layer.dimmed{opacity:0}
+  @media(max-width:640px){header{padding:8px 12px;gap:8px}h1{width:100%;font-size:13px}.controls{width:100%;justify-content:space-between}.slider-wrap{flex:1;min-width:130px}input[type="range"]{flex:1;width:auto}}
+  @media(orientation:landscape)and(max-height:500px){header{padding:6px 12px;flex-wrap:nowrap}h1{display:none}.controls{width:100%;justify-content:space-between}}
 </style>
 </head>
 <body>
@@ -38,8 +38,8 @@
       <button class="floor-btn" data-floor="0">Ground Floor</button>
       <button class="floor-btn" data-floor="1">First Floor</button>
       <div class="slider-wrap"><span>Spacing:</span><input type="range" id="rng" min="0" max="650" value="0"><span class="slider-val" id="val">0px</span></div>
-      <div class="slider-wrap" id="rotWrap" style="display:none;"><span>Rotate:</span><input type="range" id="rotRng" min="0" max="0" value="0" step="1"><span class="slider-val" id="rotVal">1 / 1</span></div>
-      <div class="zoom-wrap"><button id="zOut" title="Zoom Out">-</button><button id="zReset" title="Reset View">100%</button><button id="zIn" title="Zoom In">+</button></div>
+      <div class="slider-wrap" id="rotWrap" style="display:none"><span>Rotate:</span><input type="range" id="rotRng" min="0" max="0" value="0" step="1"><span class="slider-val" id="rotVal">1/1</span></div>
+      <div class="zoom-wrap"><button id="zOut">-</button><button id="zReset">100%</button><button id="zIn">+</button></div>
     </div>
   </header>
   <main id="stage">
@@ -52,114 +52,81 @@
     </div>
   </main>
   <script>
-    const rng = document.getElementById("rng"), val = document.getElementById("val");
-    const rotWrap = document.getElementById("rotWrap"), rotRng = document.getElementById("rotRng"), rotVal = document.getElementById("rotVal");
-    const stage = document.getElementById("stage"), vp = document.getElementById("vp");
-    const layers = [...document.querySelectorAll(".layer")], floorBtns = [...document.querySelectorAll(".floor-btn")];
-    const gifCtrls = [];
-
-    layers.forEach((l, i) => { l.style.zIndex = i + 1; l.style.transform = i === 0 ? "translateY(0px)" : `translateY(calc(var(--spacing) * -${i}))`; });
-    floorBtns.forEach(b => b.onclick = () => {
-      floorBtns.forEach(x => x.classList.remove("active")); b.classList.add("active");
-      const t = b.dataset.floor; layers.forEach((l, i) => l.classList.toggle("dimmed", t !== "all" && Number(t) !== i));
-    });
-    rng.oninput = () => {
-      const n = +rng.value; val.textContent = Math.round(n / 2.6) + "px";
-      document.documentElement.style.setProperty("--spacing", n + "px");
-      document.documentElement.style.setProperty("--shadow", (Math.min(n / 150, 1) * 0.45).toFixed(2));
-    };
-
-    async function decodeGif(buf) {
-      if ("ImageDecoder" in window) {
-        try {
-          const dec = new ImageDecoder({ data: buf.slice(0), type: "image/gif" });
-          await dec.completed;
-          const native = [];
-          for (let i = 0; ; i++) {
-            try {
-              const { image } = await dec.decode({ frameIndex: i, completeFramesOnly: true });
-              native.push(await createImageBitmap(image)); image.close();
-            } catch { break; }
+    const layers=[...document.querySelectorAll(".layer")],floorBtns=[...document.querySelectorAll(".floor-btn")],gifCtrls=[];
+    layers.forEach((l,i)=>{l.style.zIndex=i+1;l.style.transform=i===0?"translateY(0px)":`translateY(calc(var(--spacing) * -${i}))`;});
+    floorBtns.forEach(b=>b.onclick=()=>{floorBtns.forEach(x=>x.classList.remove("active"));b.classList.add("active");const t=b.dataset.floor;layers.forEach((l,i)=>l.classList.toggle("dimmed",t!=="all"&&Number(t)!==i));});
+    rng.oninput=()=>{const n=+rng.value;document.documentElement.style.setProperty("--spacing",n+"px");document.documentElement.style.setProperty("--shadow",(Math.min(n/150,1)*0.45).toFixed(2));};
+    function parseGifJS(buf){
+      const u=new Uint8Array(buf);let p=6;const w=u[p]|(u[p+1]<<8),h=u[p+2]|(u[p+3]<<8),pf=u[p+4];p+=7;
+      let gct=null;if(pf&128){const s=3*(1<<((pf&7)+1));gct=u.subarray(p,p+s);p+=s;}
+      const sub=()=>{const o=[];while(u[p]){const n=u[p++];for(let i=0;i<n;i++)o.push(u[p++]);}p++;return new Uint8Array(o);};
+      let tr=-1,dp=0;const frames=[],comp=new Uint8ClampedArray(w*h*4);
+      while(p<u.length){
+        const b=u[p++];if(b===59)break;
+        if(b===33){if(u[p++]===249){const g=u[p+1];dp=(g>>2)&7;tr=(g&1)?u[p+4]:-1;p+=6;}else sub();}
+        else if(b===44){
+          const fx=u[p]|(u[p+1]<<8),fy=u[p+2]|(u[p+3]<<8),fw=u[p+4]|(u[p+5]<<8),fh=u[p+6]|(u[p+7]<<8),lf=u[p+8];p+=9;
+          let ct=gct;if(lf&128){const s=3*(1<<((lf&7)+1));ct=u.subarray(p,p+s);p+=s;}
+          const mc=u[p++],data=sub();let clr=1<<mc,eoi=clr+1,cs=mc+1,nc=eoi+1;
+          const pref=new Int32Array(4096),suff=new Uint8Array(4096),stk=new Uint8Array(4096);
+          let bits=0,bb=0,idx=0,prev=-1,px=0,py=0,top=0;
+          const put=c=>{if(c!==tr&&ct){const o=((fy+py)*w+(fx+px))*4,k=c*3;comp[o]=ct[k];comp[o+1]=ct[k+1];comp[o+2]=ct[k+2];comp[o+3]=255;}if(++px>=fw){px=0;py++;}};
+          while(py<fh){
+            while(bits<cs&&idx<data.length){bb|=data[idx++]<<bits;bits+=8;}if(bits<cs)break;
+            const code=bb&((1<<cs)-1);bb>>=cs;bits-=cs;
+            if(code===clr){cs=mc+1;nc=eoi+1;prev=-1;continue;}if(code===eoi)break;
+            let cur=code;if(cur>=nc){stk[top++]=prev;cur=prev;}
+            while(cur>eoi){stk[top++]=suff[cur];cur=pref[cur];}stk[top++]=cur;
+            if(prev!==-1&&nc<4096){pref[nc]=prev;suff[nc++]=cur;if(nc>=(1<<cs)&&cs<12)cs++;}
+            prev=code;while(top>0)put(stk[--top]);
           }
-          if (native.length > 0) return native;
-        } catch {}
-      }
-      const { parseGIF, decompressFrames } = await import("https://esm.sh");
-      const gif = parseGIF(buf), raw = decompressFrames(gif, true), w = gif.lsd.width, h = gif.lsd.height;
-      const comp = document.createElement("canvas"), patch = document.createElement("canvas");
-      comp.width = w; comp.height = h;
-      const cctx = comp.getContext("2d"), pctx = patch.getContext("2d"), safari = [];
-      for (const f of raw) {
-        if (f.disposalType === 2) cctx.clearRect(0, 0, w, h);
-        patch.width = f.dims.width; patch.height = f.dims.height;
-        const id = pctx.createImageData(f.dims.width, f.dims.height);
-        id.data.set(f.patch); pctx.putImageData(id, 0, 0);
-        cctx.drawImage(patch, f.dims.left, f.dims.top);
-        safari.push(await createImageBitmap(cctx.getImageData(0, 0, w, h)));
-      }
-      return safari;
-    }
-
-    layers.forEach(async l => {
-      const img = l.querySelector("img"), src = img?.dataset.src;
-      if (!src) return;
-      if (!src.toLowerCase().endsWith(".gif")) { img.src = src; return; }
-      try {
-        const res = await fetch(src);
-        if (!res.ok) return;
-        const bitmaps = await decodeGif(await res.arrayBuffer());
-        const count = bitmaps.length, first = bitmaps.at(0);
-        if (!first) return;
-        const c = document.createElement("canvas"), ctx = c.getContext("2d");
-        c.width = first.width; c.height = first.height; ctx.drawImage(first, 0, 0);
-        img.replaceWith(c);
-        gifCtrls.push({ ctx, c, bitmaps, count });
-        if (count > 1) {
-          rotWrap.style.display = "flex";
-          if (count - 1 >= (+rotRng.max || 0)) { rotRng.max = count - 1; rotVal.textContent = "1 / " + count; }
+          frames.push(new ImageData(new Uint8ClampedArray(comp),w,h));if(dp===2)comp.fill(0);tr=-1;dp=0;
         }
-      } catch {}
-    });
-
-    rotRng.oninput = () => {
-      const idx = +rotRng.value, count = (+rotRng.max || 0) + 1;
-      rotVal.textContent = (idx + 1) + " / " + count;
-      gifCtrls.forEach(g => { g.ctx.clearRect(0, 0, g.c.width, g.c.height); g.ctx.drawImage(g.bitmaps.at(idx % g.count), 0, 0); });
-    };
-
-    const getFit = () => Math.min(stage.clientWidth, stage.clientHeight) * 0.92 / 2048;
-    let base = getFit(), zoom = 1, tx = 0, ty = 0, lastD = 0, lastM = null;
-    const pts = new Map();
-    const apply = () => { vp.style.transform = `translate(${tx}px,${ty}px) scale(${base * zoom})`; zReset.textContent = Math.round(zoom * 100) + "%"; };
-    const setZ = (nxt, cx = 0, cy = 0) => {
-      const prev = zoom; zoom = Math.min(Math.max(nxt, 0.75), 4);
-      const r = zoom / prev; tx = cx - (cx - tx) * r; ty = cy - (cy - ty) * r;
-      if (zoom === 1 && Math.abs(tx) < 5 && Math.abs(ty) < 5) { tx = 0; ty = 0; }
-      apply();
-    };
-    const reset = () => { base = getFit(); zoom = 1; tx = 0; ty = 0; apply(); };
-    window.onresize = () => { base = getFit(); apply(); };
-    reset();
-    zIn.onclick = () => setZ(zoom + 0.35); zOut.onclick = () => setZ(zoom - 0.35);
-    zReset.onclick = reset; stage.ondblclick = reset;
-    stage.addEventListener("wheel", e => {
-      e.preventDefault(); const r = stage.getBoundingClientRect();
-      setZ(zoom * (e.deltaY < 0 ? 1.12 : 0.89), e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
-    }, { passive: false });
-    stage.onpointerdown = e => { stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); lastD = 0; lastM = null; };
-    stage.onpointermove = e => {
-      if (!pts.has(e.pointerId)) return;
-      const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pts.size === 1) { tx += e.clientX - prev.x; ty += e.clientY - prev.y; apply(); }
-      else if (pts.size === 2) {
-        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = stage.getBoundingClientRect();
-        const m = { x: (a.x + b.x) / 2 - (r.left + r.width / 2), y: (a.y + b.y) / 2 - (r.top + r.height / 2) };
-        if (lastD > 0 && lastM) { tx += m.x - lastM.x; ty += m.y - lastM.y; setZ(zoom * (d / lastD), m.x, m.y); }
-        lastD = d; lastM = m;
       }
+      return{w,h,frames,isBmp:false};
+    }
+    async function decodeGif(buf){
+      if("ImageDecoder"in window){
+        try{
+          const dec=new ImageDecoder({data:buf.slice(0),type:"image/gif"});await dec.completed;const native=[];
+          for(let i=0;;i++){try{const{image}=await dec.decode({frameIndex:i,completeFramesOnly:true});native.push(await createImageBitmap(image));image.close();}catch{break;}}
+          if(native.length>0)return{w:native.at(0).width,h:native.at(0).height,frames:native,isBmp:true};
+        }catch{}
+      }
+      return parseGifJS(buf);
+    }
+    layers.forEach(async l=>{
+      const img=l.querySelector("img"),src=img?.dataset.src;if(!src)return;
+      if(!src.toLowerCase().endsWith(".gif")){img.src=src;return;}
+      try{
+        const res=await fetch(src);if(!res.ok)return;
+        const{w,h,frames,isBmp}=await decodeGif(await res.arrayBuffer());
+        const count=frames.length,first=frames.at(0);if(!first)return;
+        const c=document.createElement("canvas"),ctx=c.getContext("2d");c.width=w;c.height=h;
+        if(isBmp)ctx.drawImage(first,0,0);else ctx.putImageData(first,0,0);
+        img.replaceWith(c);gifCtrls.push({ctx,c,frames,count,isBmp});
+        if(count>1){rotWrap.style.display="flex";if(count-1>=(+rotRng.max||0))rotRng.max=count-1;}
+      }catch{}
+    });
+    rotRng.oninput=()=>{
+      const idx=+rotRng.value;
+      gifCtrls.forEach(g=>{const f=g.frames.at(idx%g.count);if(g.isBmp){g.ctx.clearRect(0,0,g.c.width,g.c.height);g.ctx.drawImage(f,0,0);}else g.ctx.putImageData(f,0,0);});
     };
-    const endP = e => { pts.delete(e.pointerId); lastD = 0; lastM = null; };
-    stage.onpointerup = endP; stage.onpointercancel = endP;
+    const getFit=()=>Math.min(stage.clientWidth,stage.clientHeight)*0.92/2048;
+    let base=getFit(),zoom=1,tx=0,ty=0,lastD=0,lastM=null;const pts=new Map();
+    const apply=()=>{vp.style.transform=`translate(${tx}px,${ty}px) scale(${base*zoom})`;zReset.textContent=Math.round(zoom*100)+"%";};
+    const setZ=(nxt,cx=0,cy=0)=>{const prev=zoom;zoom=Math.min(Math.max(nxt,0.75),4);const r=zoom/prev;tx=cx-(cx-tx)*r;ty=cy-(cy-ty)*r;if(zoom===1&&Math.abs(tx)<5&&Math.abs(ty)<5){tx=0;ty=0;}apply();};
+    const reset=()=>{base=getFit();zoom=1;tx=0;ty=0;apply();};
+    window.onresize=()=>{base=getFit();apply();};reset();
+    zIn.onclick=()=>setZ(zoom+0.35);zOut.onclick=()=>setZ(zoom-0.35);zReset.onclick=reset;stage.ondblclick=reset;
+    stage.addEventListener("wheel",e=>{e.preventDefault();const r=stage.getBoundingClientRect();setZ(zoom*(e.deltaY<0?1.12:0.89),e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2));},{passive:false});
+    stage.onpointerdown=e=>{stage.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});lastD=0;lastM=null;};
+    stage.onpointermove=e=>{
+      if(!pts.has(e.pointerId))return;const prev=pts.get(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pts.size===1){tx+=e.clientX-prev.x;ty+=e.clientY-prev.y;apply();}
+      else if(pts.size===2){const[a,b]=[...pts.values()],d=Math.hypot(a.x-b.x,a.y-b.y),r=stage.getBoundingClientRect(),m={x:(a.x+b.x)/2-(r.left+r.width/2),y:(a.y+b.y)/2-(r.top+r.height/2)};if(lastD>0&&lastM){tx+=m.x-lastM.x;ty+=m.y-lastM.y;setZ(zoom*(d/lastD),m.x,m.y);}lastD=d;lastM=m;}
+    };
+    const endP=e=>{pts.delete(e.pointerId);lastD=0;lastM=null;};stage.onpointerup=endP;stage.onpointercancel=endP;
   </script>
 </body>
 </html>
