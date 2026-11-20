@@ -63,9 +63,7 @@
       </div>
     </div>
   </main>
-  <script type="module">
-    import { parseGIF, decompressFrames } from "https://esm.sh";
-
+  <script>
     const rng = document.getElementById("rng"), val = document.getElementById("val");
     const rotWrap = document.getElementById("rotWrap"), rotRng = document.getElementById("rotRng"), rotVal = document.getElementById("rotVal");
     const stage = document.getElementById("stage"), vp = document.getElementById("vp");
@@ -103,9 +101,9 @@
             image.close();
           } catch { break; }
         }
-        if (bitmaps.length) return bitmaps;
+        return bitmaps;
       }
-      // Safari / iOS fallback decoder
+      const { parseGIF, decompressFrames } = await import("https://jsdelivr.net");
       const gif = parseGIF(buf);
       const rawFrames = decompressFrames(gif, true);
       const w = gif.lsd.width, h = gif.lsd.height;
