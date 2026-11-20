@@ -32,7 +32,7 @@
 </head>
 <body>
   <header>
-    <h1>Interactive Floorplans</h1>
+    <h1>Isometric CGI Stack</h1>
     <div class="controls">
       <button class="floor-btn active" data-floor="all">All Floors</button>
       <button class="floor-btn" data-floor="0">Ground Floor</button>
@@ -67,7 +67,8 @@
         else if(b===44){
           const fx=u[p]|(u[p+1]<<8),fy=u[p+2]|(u[p+3]<<8),fw=u[p+4]|(u[p+5]<<8),fh=u[p+6]|(u[p+7]<<8),lf=u[p+8];p+=9;
           let ct=gct;if(lf&128){const s=3*(1<<((lf&7)+1));ct=u.subarray(p,p+s);p+=s;}
-          const mc=u[p++],data=sub();let clr=1<<mc,eoi=clr+1,cs=mc+1,nc=eoi+1;
+          const sav=dp===3?new Uint8ClampedArray(comp):null,mc=u[p++],data=sub();
+          let clr=1<<mc,eoi=clr+1,cs=mc+1,nc=eoi+1;
           const pref=new Int32Array(4096),suff=new Uint8Array(4096),stk=new Uint8Array(4096);
           let bits=0,bb=0,idx=0,prev=-1,px=0,py=0,top=0;
           const put=c=>{if(c!==tr&&ct){const o=((fy+py)*w+(fx+px))*4,k=c*3;comp[o]=ct[k];comp[o+1]=ct[k+1];comp[o+2]=ct[k+2];comp[o+3]=255;}if(++px>=fw){px=0;py++;}};
@@ -75,12 +76,16 @@
             while(bits<cs&&idx<data.length){bb|=data[idx++]<<bits;bits+=8;}if(bits<cs)break;
             const code=bb&((1<<cs)-1);bb>>=cs;bits-=cs;
             if(code===clr){cs=mc+1;nc=eoi+1;prev=-1;continue;}if(code===eoi)break;
-            let cur=code;if(cur>=nc){stk[top++]=prev;cur=prev;}
+            let fc=prev;while(fc>eoi)fc=pref[fc];
+            let cur=code;if(cur>=nc){stk[top++]=fc;cur=prev;}
             while(cur>eoi){stk[top++]=suff[cur];cur=pref[cur];}stk[top++]=cur;
             if(prev!==-1&&nc<4096){pref[nc]=prev;suff[nc++]=cur;if(nc>=(1<<cs)&&cs<12)cs++;}
             prev=code;while(top>0)put(stk[--top]);
           }
-          frames.push(new ImageData(new Uint8ClampedArray(comp),w,h));if(dp===2)comp.fill(0);tr=-1;dp=0;
+          frames.push(new ImageData(new Uint8ClampedArray(comp),w,h));
+          if(dp===2)for(let y=fy;y<fy+fh;y++)comp.fill(0,(y*w+fx)*4,(y*w+fx+fw)*4);
+          else if(dp===3&&sav)comp.set(sav);
+          tr=-1;dp=0;
         }
       }
       return{w,h,frames,isBmp:false};
